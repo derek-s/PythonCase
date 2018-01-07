@@ -6,6 +6,9 @@ import urllib
 import progressbar
 from bs4 import BeautifulSoup
 import os
+import threading
+import datetime
+import queue
 
 class spider():
     def __init__(self):
@@ -23,7 +26,7 @@ class spider():
         fails = 1
         while fails < 31:
             try:
-                r = requests.get(url, headers=self.header, timeout=10, proxies=self.proxy)
+                r = requests.get(url, headers=self.header, timeout=10)
                 return r.text
             except Exception as e:
                 print e
@@ -75,8 +78,12 @@ class spider():
             self.indexdown(url, filename)
         else:
             filename = path
-            self.filedown(url, filename)
-
+            filexists, length = self.isExists(url, filename)
+            if filexists:
+                self.filedown(url, filename, length)
+            else:
+                pass
+                
     def indexdown(self, url, filename):
         try:
             print "downloading", url
@@ -89,39 +96,67 @@ class spider():
         except Exception as e:
             print e
 
-    def filedown(self, url, filename):
-        r = requests.request("GET", url, stream=True, headers=self.header, proxies=self.proxy)
+    def isExists(self, url, filename):
+        r = requests.request(
+            'GET', url, stream=True, headers=self.header, proxies=self.proxy)
         total_length = int(r.headers.get("Content-Length"))
         if os.path.exists(filename):
-            print filename + ' is exists'
+            print '%s is exists' % filename
             if os.path.getsize(filename) != total_length:
-                print 'file length inconformity download file'
-                self.downproc(filename, r, total_length)
+                return False, total_length
             else:
-                pass
+                return True, total_length
         else:
-            self.downproc(filename, r, total_length)
-    
-    def downproc(self, filename, r, total_length):
-        prvalue = 0
-        with open(filename, "wb") as f:
-            widgets = [
-                'Progress:', progressbar.Percentage(),
-                ' ', progressbar.Bar(marker="#", left='[', right=']'),
-                ' ', progressbar.ETA(),
-                ' ', progressbar.FileTransferSpeed()
-                ]
-            pbar = progressbar.ProgressBar(widgets=widgets, maxval=total_length).start()
+            return True, total_length
+
+    def downproc(self, url, filename, start, end):
+        headers = {
+            "Referer": "https://www.baidu.com/",
+            "User-Agent": "Mozilla/5.0 (Linux; Android 4.4.2; Nexus 4 Build/KOT49H) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.114 Mobile Safari/537.36",
+            "Range": "bytes=%d-%d" % (start, end)
+            }
+        r = requests.get(url, stream=True, headers=headers)
+
+        with open(filename, "r+b") as fp:
+            fp.seek(start)
+            var = fp.tell()
             for chunk in r.iter_content(chunk_size=1):
                 if chunk:
-                    f.write(chunk)
-                    f.flush()
-                    prvalue = prvalue + len(chunk)
-                pbar.update(prvalue)
-            pbar.finish()
-            print 'done'
+                    fp.write(chunk)
+                    fp.flush()
 
 
+    def filedown(self, url, filename, total_length):
+        nthreads = 1
+        filename_temp = filename + ".temp"
+        f = open(filename_temp, "wb")
+        f.truncate(total_length)
+        f.close()
+        
+        part = total_length // nthreads
+        for i in range(nthreads):
+            start = part * i
+            if i == nthreads - 1:
+                end = total_length
+            else:
+                end = start + part
+
+        t = threading.Thread(target=self.downproc, kwargs={
+            "start": start,
+            "end": end,
+            "url": url,
+            "filename": filename_temp
+        })
+        t.setDaemon(True)
+        t.start()
+
+        mainthread = threading.current_thread()
+        for t in threading.enumerate():
+            if t is mainthread:
+                continue
+            t.join()
+        print "download complete"
+        os.rename(filename_temp, filename)
 
 if __name__ == "__main__":
     testurl = "http://tfr.org/"
