@@ -8,7 +8,8 @@ from bs4 import BeautifulSoup
 import os
 import threading
 import datetime
-import queue
+import Queue
+import sys
 
 class spider():
     def __init__(self):
@@ -21,6 +22,7 @@ class spider():
             "http": "http://127.0.0.1:1090",
             "https": "http://127.0.0.1:1090"
         }
+        self.q = Queue.Queue()
     
     def request(self, url):
         fails = 1
@@ -116,7 +118,6 @@ class spider():
             "Range": "bytes=%d-%d" % (start, end)
             }
         r = requests.get(url, stream=True, headers=headers)
-
         with open(filename, "r+b") as fp:
             fp.seek(start)
             var = fp.tell()
@@ -125,9 +126,8 @@ class spider():
                     fp.write(chunk)
                     fp.flush()
 
-
     def filedown(self, url, filename, total_length):
-        nthreads = 1
+        nthreads = 5
         filename_temp = filename + ".temp"
         f = open(filename_temp, "wb")
         f.truncate(total_length)
@@ -141,14 +141,14 @@ class spider():
             else:
                 end = start + part
 
-        t = threading.Thread(target=self.downproc, kwargs={
-            "start": start,
-            "end": end,
-            "url": url,
-            "filename": filename_temp
-        })
-        t.setDaemon(True)
-        t.start()
+            t = threading.Thread(target=self.downproc, kwargs={
+                "start": start,
+                "end": end,
+                "url": url,
+                "filename": filename_temp
+            })
+            t.setDaemon(True)
+            t.start()
 
         mainthread = threading.current_thread()
         for t in threading.enumerate():
@@ -157,6 +157,7 @@ class spider():
             t.join()
         print "download complete"
         os.rename(filename_temp, filename)
+
 
 if __name__ == "__main__":
     testurl = "http://tfr.org/"
