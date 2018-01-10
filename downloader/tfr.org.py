@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding:utf-8 -*-
 
 import requests 
@@ -8,8 +8,10 @@ from bs4 import BeautifulSoup
 import os
 import threading
 import datetime
-import Queue
 import sys
+import logging
+from multiprocessing import Pool, current_process
+from itertools import product
 
 class spider():
     def __init__(self):
@@ -22,7 +24,6 @@ class spider():
             "http": "http://127.0.0.1:1090",
             "https": "http://127.0.0.1:1090"
         }
-        self.q = Queue.Queue()
     
     def request(self, url):
         fails = 1
@@ -31,8 +32,8 @@ class spider():
                 r = requests.get(url, headers=self.header, timeout=10)
                 return r.text
             except Exception as e:
-                print e
-                print 'error retry'
+                print(e)
+                print('error retry')
                 fails += 1
 
     def page_source(self, pgstr, url):
@@ -43,13 +44,13 @@ class spider():
                 pass
             elif link.split('//')[-1].split('.')[-1].split('/')[-1] == "":
                 link = url + link
-                print link
+                print(link)
                 self.mkdir(link)
                 self.download(link)
                 self.page_source(self.request(link), link)
             else:
                 link = url + link
-                print link
+                print(link)
                 self.mkdir(link)
                 self.download(link)
 
@@ -58,19 +59,19 @@ class spider():
             path = self.url.split('//')[-1]
             if not os.path.exists(path):
                 os.makedirs(path)
-                print path + "create"
+                print(path + "create")
             else:
-                print path + "exists"
+                print(path + "exists")
         else:
             path = str(url).split('//')[-1]
             if str(path).split('//')[-1].split('.')[-1].split('/')[-1] == "":
                 if not os.path.exists(path):
                     os.makedirs(path)
-                    print path + " is create"
+                    print(path + " is create")
                 else:
-                    print path + " is exists"
+                    print(path + " is exists")
             else:
-                print path + " is file"
+                print(path + " is file")
         
     def download(self, url):
         path = str(url).split('//')[-1]
@@ -88,22 +89,22 @@ class spider():
                 
     def indexdown(self, url, filename):
         try:
-            print "downloading", url
+            print("downloading", url)
             if not os.path.exists(filename):
                 with open(filename, "wb") as down_write:
                     down_write.write(self.request(url).encode('utf-8'))
-                print "done"
+                print("done")
             else:
-                print filename + " is exists"
+                print(filename + " is exists")
         except Exception as e:
-            print e
+            print(e)
 
     def isExists(self, url, filename):
         r = requests.request(
             'GET', url, stream=True, headers=self.header, proxies=self.proxy)
         total_length = int(r.headers.get("Content-Length"))
         if os.path.exists(filename):
-            print '%s is exists' % filename
+            print('%s is exists' % filename)
             if os.path.getsize(filename) != total_length:
                 return True, total_length
             else:
@@ -111,7 +112,7 @@ class spider():
         else:
             return True, total_length
 
-    def downproc(self, lock, url, filename, start, end):
+    def downproc(self, url, filename, start, end):
         headers = {
             "Referer": "https://www.baidu.com/",
             "User-Agent": "Mozilla/5.0 (Linux; Android 4.4.2; Nexus 4 Build/KOT49H) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.114 Mobile Safari/537.36",
@@ -123,30 +124,27 @@ class spider():
                 r = requests.get(url, stream=True, headers=headers, timeout=10)
                 break
             except Exception as e:
-                print e
+                print(e)
                 fails += 1
 
         length = end - start
-        text = threading.current_thread().name
+        text = current_process().name
         postion = text.split('-')[-1]
-        with lock:
-            progress = tqdm(
-                ncols=80,
-                total=length,
-                unit_scale=True,
-                desc=text,
-                position=int(postion),
-                unit='B'
-                )
+        progress = tqdm(
+            unit_scale=True,
+            ncols=80,
+            total=length,
+            position=int(postion),
+            unit='B',
+            miniters = 1
+            )
         with open(filename, "r+b") as fp:
             fp.seek(start)
             var = fp.tell()
             for chunk in r.iter_content(chunk_size=512):
                 fp.write(chunk)
                 fp.flush()
-                with lock:
-                    progress.update(len(chunk))
-
+            progress.update(len(chunk))
 
     def filedown(self, url, filename, total_length):
         nthreads = 4
@@ -155,36 +153,25 @@ class spider():
         f.truncate(total_length)
         f.close()
         part = total_length // nthreads
-        lock = threading.Lock()
         startime = datetime.datetime.now().replace(microsecond=0)
+        l = []
+        pool = Pool(nthreads)
         for i in range(nthreads):
             start = part * i
             if i == nthreads - 1:
                 end = total_length
             else:
                 end = start + part
-            
-            t = threading.Thread(target=self.downproc, kwargs={
-                "lock": lock,
-                "start": start,
-                "end": end,
-                "url": url,
-                "filename": filename_temp
-            })
-            t.setDaemon(True)
-            t.start()
-        
-        mainthread = threading.current_thread()
-        for t in threading.enumerate():
-            if t is mainthread:
-                continue
-            t.join()
-        t._Thread__stop()
-        print "\n"
-        print "download complete"
+            l.append((url, filename_temp, start, end))
+        pool.starmap(self.downproc, l)
+
+        pool.close()
+        pool.join()
+        print("\n" * 4)
+        print("download complete")
         os.rename(filename_temp, filename)
         endtime = datetime.datetime.now().replace(microsecond=0)
-        print endtime-startime
+        print(endtime-startime)
 
 
 if __name__ == "__main__":
