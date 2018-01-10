@@ -3,7 +3,7 @@
 
 import requests 
 import urllib
-import progressbar
+from tqdm import tqdm
 from bs4 import BeautifulSoup
 import os
 import threading
@@ -105,43 +105,67 @@ class spider():
         if os.path.exists(filename):
             print '%s is exists' % filename
             if os.path.getsize(filename) != total_length:
-                return False, total_length
-            else:
                 return True, total_length
+            else:
+                return False, total_length
         else:
             return True, total_length
 
-    def downproc(self, url, filename, start, end):
+    def downproc(self, lock, url, filename, start, end):
         headers = {
             "Referer": "https://www.baidu.com/",
             "User-Agent": "Mozilla/5.0 (Linux; Android 4.4.2; Nexus 4 Build/KOT49H) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.114 Mobile Safari/537.36",
             "Range": "bytes=%d-%d" % (start, end)
             }
-        r = requests.get(url, stream=True, headers=headers)
+        fails = 0
+        while fails < 31:
+            try:
+                r = requests.get(url, stream=True, headers=headers, timeout=10)
+                break
+            except Exception as e:
+                print e
+                fails += 1
+
+        length = end - start
+        text = threading.current_thread().name
+        postion = text.split('-')[-1]
+        with lock:
+            progress = tqdm(
+                ncols=80,
+                total=length,
+                unit_scale=True,
+                desc=text,
+                position=int(postion),
+                unit='B'
+                )
         with open(filename, "r+b") as fp:
             fp.seek(start)
             var = fp.tell()
-            for chunk in r.iter_content(chunk_size=1):
-                if chunk:
-                    fp.write(chunk)
-                    fp.flush()
+            for chunk in r.iter_content(chunk_size=512):
+                fp.write(chunk)
+                fp.flush()
+                with lock:
+                    progress.update(len(chunk))
+
 
     def filedown(self, url, filename, total_length):
-        nthreads = 5
+        nthreads = 4
         filename_temp = filename + ".temp"
         f = open(filename_temp, "wb")
         f.truncate(total_length)
         f.close()
-        
         part = total_length // nthreads
+        lock = threading.Lock()
+        startime = datetime.datetime.now().replace(microsecond=0)
         for i in range(nthreads):
             start = part * i
             if i == nthreads - 1:
                 end = total_length
             else:
                 end = start + part
-
+            
             t = threading.Thread(target=self.downproc, kwargs={
+                "lock": lock,
                 "start": start,
                 "end": end,
                 "url": url,
@@ -149,14 +173,18 @@ class spider():
             })
             t.setDaemon(True)
             t.start()
-
+        
         mainthread = threading.current_thread()
         for t in threading.enumerate():
             if t is mainthread:
                 continue
             t.join()
+        t._Thread__stop()
+        print "\n"
         print "download complete"
         os.rename(filename_temp, filename)
+        endtime = datetime.datetime.now().replace(microsecond=0)
+        print endtime-startime
 
 
 if __name__ == "__main__":
