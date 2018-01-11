@@ -1,23 +1,21 @@
 #!/usr/bin/python3
 # -*- coding:utf-8 -*-
 
-import requests 
-import urllib
+import requests
 from tqdm import tqdm
 from bs4 import BeautifulSoup
 import os
-import threading
 import datetime
-import sys
-import logging
 from multiprocessing import Pool, current_process
-from itertools import product
-
+import time
+import logging
+from requests.adapters import HTTPAdapter
 class spider():
     def __init__(self):
         self.header = {
             "Referer": "https://www.baidu.com/",
-            "User-Agent": "Mozilla/5.0 (Linux; Android 4.4.2; Nexus 4 Build/KOT49H) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.114 Mobile Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.84 Safari/537.36",
+            "Connection": "close"
         }
         self.url = "http://tfr.org/"
         self.proxy = {
@@ -100,9 +98,8 @@ class spider():
             print(e)
 
     def isExists(self, url, filename):
-        r = requests.request(
-            'GET', url, stream=True, headers=self.header, proxies=self.proxy)
-        total_length = int(r.headers.get("Content-Length"))
+        r = requests.head(url)
+        total_length = int(r.headers["Content-Length"])
         if os.path.exists(filename):
             print('%s is exists' % filename)
             if os.path.getsize(filename) != total_length:
@@ -113,27 +110,36 @@ class spider():
             return True, total_length
 
     def downproc(self, url, filename, start, end):
-        headers = {
-            "Referer": "https://www.baidu.com/",
-            "User-Agent": "Mozilla/5.0 (Linux; Android 4.4.2; Nexus 4 Build/KOT49H) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.114 Mobile Safari/537.36",
-            "Range": "bytes=%d-%d" % (start, end)
-            }
-        fails = 0
-        while fails < 31:
-            try:
-                r = requests.get(url, stream=True, headers=headers, timeout=10)
-                break
-            except Exception as e:
-                print(e)
-                fails += 1
+        """
+        try:  # for Python 3
+            from http.client import HTTPConnection
+        except ImportError:
+            from httplib import HTTPConnection
+        HTTPConnection.debuglevel = 1
 
+        logging.basicConfig()  # you need to initialize logging, otherwise you will not see anything from requests
+        logging.getLogger().setLevel(logging.DEBUG)
+        requests_log = logging.getLogger("requests.packages.urllib3")
+        requests_log.setLevel(logging.DEBUG)
+        requests_log.propagate = True
+        """
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.84 Safari/537.36",
+            "Range": "bytes=%d-%d" % (start, end),
+            "Connection": "close"
+            }
+        s = requests.Session()
+        s.mount("http://", HTTPAdapter(max_retries=30))
+        s.mount("http://", HTTPAdapter(max_retries=30))
+        r = s.get(url, headers=headers, stream=True)
+        # r = requests.get(url, headers=headers, stream=True)
         length = end - start
         text = current_process().name
-        postion = text.split('-')[-1]
+        postion = str(text).split('-')[-1]
         progress = tqdm(
-            unit_scale=True,
             ncols=80,
             total=length,
+            unit_scale=True,
             position=int(postion),
             unit='B',
             miniters = 1
@@ -141,10 +147,11 @@ class spider():
         with open(filename, "r+b") as fp:
             fp.seek(start)
             var = fp.tell()
-            for chunk in r.iter_content(chunk_size=512):
+            for chunk in r.iter_content(chunk_size=256):
                 fp.write(chunk)
                 fp.flush()
-            progress.update(len(chunk))
+                progress.update(len(chunk))
+            progress.close()
 
     def filedown(self, url, filename, total_length):
         nthreads = 4
@@ -152,6 +159,7 @@ class spider():
         f = open(filename_temp, "wb")
         f.truncate(total_length)
         f.close()
+        print("Total_Length", total_length)
         part = total_length // nthreads
         startime = datetime.datetime.now().replace(microsecond=0)
         l = []
@@ -167,6 +175,7 @@ class spider():
 
         pool.close()
         pool.join()
+        time.sleep(5)
         print("\n" * 4)
         print("download complete")
         os.rename(filename_temp, filename)
