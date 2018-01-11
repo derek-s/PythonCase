@@ -129,6 +129,7 @@ class spider():
             "Connection": "close"
             }
         s = requests.Session()
+        s.keep_alive = False
         s.mount("http://", HTTPAdapter(max_retries=30))
         s.mount("http://", HTTPAdapter(max_retries=30))
         r = s.get(url, headers=headers, stream=True)
