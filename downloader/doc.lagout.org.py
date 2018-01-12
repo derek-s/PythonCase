@@ -99,7 +99,12 @@ class spider():
             print(e)
 
     def isExists(self, url, filename):
-        r = requests.head(url)
+        s = requests.Session()
+        s.keep_alive = False
+        s.mount("http://", HTTPAdapter(max_retries=30))
+        s.mount("https://", HTTPAdapter(max_retries=30))
+        r = s.head(url, headers=self.header, proxies=self.proxy)
+        # r = requests.head(url)
         total_length = int(r.headers["Content-Length"])
         if os.path.exists(filename):
             print('%s is exists' % filename)
@@ -132,7 +137,7 @@ class spider():
         s = requests.Session()
         s.keep_alive = False
         s.mount("http://", HTTPAdapter(max_retries=30))
-        s.mount("http://", HTTPAdapter(max_retries=30))
+        s.mount("https://", HTTPAdapter(max_retries=30))
         r = s.get(url, headers=headers, stream=True, proxies=self.proxy)
         # r = requests.get(url, headers=headers, stream=True)
         length = end - start
@@ -156,7 +161,7 @@ class spider():
             progress.close()
 
     def filedown(self, url, filename, total_length):
-        nthreads = 4
+        nthreads = 1
         filename_temp = filename + ".temp"
         f = open(filename_temp, "wb")
         f.truncate(total_length)

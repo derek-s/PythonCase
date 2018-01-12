@@ -98,7 +98,12 @@ class spider():
             print(e)
 
     def isExists(self, url, filename):
-        r = requests.head(url)
+        s = requests.Session()
+        s.keep_alive = False
+        s.mount("http://", HTTPAdapter(max_retries=30))
+        s.mount("https://", HTTPAdapter(max_retries=30))
+        r = s.head(url, headers=self.header)
+        # r = requests.head(url)
         total_length = int(r.headers["Content-Length"])
         if os.path.exists(filename):
             print('%s is exists' % filename)
