@@ -64,8 +64,8 @@ class Checker:
         curl = pycurl.Curl()
 
         # 将curl返回页面内容重定向到文件 pycutl.writexxx 为二进制写入，注意文件打开模式
-        with open("content", "wb") as content:
-            curl.setopt(pycurl.WRITEDATA, content)
+        content = open("content", "wb")
+        curl.setopt(pycurl.WRITEDATA, content)
 
         # 配置pycurl
         curl.setopt(pycurl.URL, self.url)
@@ -80,9 +80,14 @@ class Checker:
         try:
             curl.perform()
             nslookup_time = curl.getinfo(curl.NAMELOOKUP_TIME)
-            print(nslookup_time)
+            connect_time = curl.getinfo(curl.CONNECT_TIME)
+            http_code = curl.getinfo(curl.HTTP_CODE)
+            print(nslookup_time, connect_time, http_code)
+            content.close()
+            curl.close()
         except Exception as e:
             print(e)
+            content.close()
             curl.close()
 
 
