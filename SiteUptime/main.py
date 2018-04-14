@@ -12,6 +12,7 @@ import re
 import subprocess
 import itchat
 import arrow
+import time
 
 # 初始化命令行交互
 parser = argparse.ArgumentParser()
@@ -38,6 +39,10 @@ class Checker:
         # 开启日志
         self.log = Dylog()
 
+        # 开启wechat及登陆
+        self.wechat = weChat()
+        self.wechat.login()
+
     def Ping_Testing(self):
         """
         Ping测试
@@ -56,10 +61,13 @@ class Checker:
         ping_result = str(subp.stdout.read()) # class byte to str
         ping_regex = re.findall("100% packet loss", ping_result)
         if len(ping_regex) == 0:
+            print("##### Ping %s all green #####" % (self.url))
             self.log.writelog(getDate(), self.url, "Ping测试正常")
             return(1)
         else:
+            print("##### Ping %s error #####" % (self.url))
             self.log.writelog(getDate(), self.url, "Ping测试失败 100% packet loss")
+            self.wechat.send_mes(self.url + "Ping测试失败")
             return(0)
 
     def Curl_HttpTesting(self):
@@ -86,11 +94,13 @@ class Checker:
 
         # work
         try:
+            print("##### Curl %s Test #####" % (self.url))
             self.log.writelog(getDate(), self.url, "开始curl http状态测试")
             curl.perform()
             nslookup_time = str(round(curl.getinfo(curl.NAMELOOKUP_TIME), 2))
             connect_time = str(round(curl.getinfo(curl.CONNECT_TIME), 2))
             http_code = str(curl.getinfo(curl.HTTP_CODE))
+            print("##### Curl %s all green #####" % (self.url))
             print(nslookup_time, connect_time, http_code)
             self.log.writelog(
                 getDate(),
@@ -100,8 +110,9 @@ class Checker:
             content.close()
             curl.close()
         except Exception as e:
-            print(e)
+            print("##### Curl %s error #####" % (self.url) + " " +(str(e)))
             self.log.writelog(getDate(), self.url, "curl http状态测试失败 错误信息：" + str(e) )
+            self.wechat.send_mes(self.url + "curl http测试失败" + str(e))
             content.close()
             curl.close()
 
@@ -129,12 +140,17 @@ class Dylog:
         self.logfile.close()
 
 def getDate():
+    # 返回系统当前时间
     return str(arrow.now().format("YYYY-MM-DD HH:mm:ss"))
 
 
-if __name__ == "__main__":
+def testbase():
     checker = Checker()
-    checker.Curl_HttpTesting()
-    # wechatexec = weChat()
-    # wechatexec.login()
-    # wechatexec.send_mes()
+    while(1):
+        checker.Ping_Testing()
+        checker.Curl_HttpTesting()
+        time.sleep(60)
+
+
+if __name__ == "__main__":
+    testbase()
