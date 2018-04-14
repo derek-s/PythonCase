@@ -10,6 +10,8 @@ import os
 import argparse
 import re
 import subprocess
+import itchat
+import arrow
 
 # 初始化命令行交互
 parser = argparse.ArgumentParser()
@@ -91,10 +93,18 @@ class Checker:
             curl.close()
 
 
+class weChat:
+    # 增加微信消息发送
+    def login(self):
+        itchat.auto_login(enableCmdQR=2)
 
-
+    def send_mes(self,message):
+        itchat.send(message, toUserName="filehelper")
 
 
 if __name__ == "__main__":
     checker = Checker()
     checker.Curl_HttpTesting()
+    # wechatexec = weChat()
+    # wechatexec.login()
+    # wechatexec.send_mes()
