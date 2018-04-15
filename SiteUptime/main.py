@@ -6,7 +6,6 @@
 # @File    : main.py
 
 import pycurl
-import os
 import argparse
 import re
 import subprocess
