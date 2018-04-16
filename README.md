@@ -34,6 +34,22 @@ L同学说他单位网站有点神奇问题，为了解决这个神奇问题，�
 
 在Ubuntu+Python3环境下开发测试，支持日志和向监控人发送微信信息。
 
+运行程序时会在终端下输出二维码，手机扫码后登录微信，如果不需要该功能，请将源码中wechat相关内容注释。
+
+如下行：
+
+```
+# 开启wechat及登陆
+self.wechat = weChat()
+self.wechat.login()
+
+self.wechat.send_mes(self.url + "Ping测试失败")
+
+self.wechat.send_mes(self.url + "curl http测试失败" + str(e))
+```
+
+日志以运行当日日期+"_log"为文件名，可以实时查看，不影响写入。
+
 ##### 依赖
 
 `pycurl argparse subprocess itchat arrow`
