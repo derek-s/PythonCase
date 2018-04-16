@@ -134,6 +134,7 @@ class Dylog:
     def writelog(self, logdate, target, logmessage):
         logdate_str = "[" + str(logdate) + "] - " + target + " - " + logmessage
         self.logfile.write(logdate_str + "\n")
+        self.logfile.flush()
 
     def logfile_close(self):
         self.logfile.close()
