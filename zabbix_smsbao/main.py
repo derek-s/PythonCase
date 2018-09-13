@@ -25,12 +25,11 @@ def sendSms(phoneNumber, content):
         '50': '50'
     }
 
-
     smsapi = "http://api.smsbao.com/sms?"
     user = ""
     pwd = ""
 
-    params = {"u":user, "p":pwd, "m":phoneNumber, "c":content}
+    params = {"u": user, "p": pwd, "m": phoneNumber, "c": content}
 
     r = requests.get(smsapi, params=params)
     #print(r.text)
@@ -38,4 +37,4 @@ def sendSms(phoneNumber, content):
 
 
 if __name__ == "__main__":
-    sendSms(sys.argv[1],sys.argv[2])
+    sendSms(sys.argv[1], sys.argv[2])
