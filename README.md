@@ -77,9 +77,12 @@ self.wechat.send_mes(self.url + "curl http测试失败" + str(e))
 
 ## 更新日志
 
+#### 2018-11-28
+1. 添加合并多个Excel文件内同名sheet的工具
+
 #### 2018-04-15
 
-1.添加SiteUptime小工具。
+1. 添加SiteUptime小工具。
 #### 2018-01-14
 
 1. 网站下载爬虫增加多线程提高下载速度。
