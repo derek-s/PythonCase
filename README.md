@@ -24,10 +24,10 @@
 
 `Requests progressbar BeautifulSoup`
 
-
 ### 网页在线监控
 
 L同学说他单位网站有点神奇问题，为了解决这个神奇问题，于是写了个在线监控。
+
 #### SiteUptime
 
 通过Ping和curl分别检测网络连通性和HTTP访问状态码、DNS解析时间、连接时间测试。
@@ -65,6 +65,15 @@ self.wechat.send_mes(self.url + "curl http测试失败" + str(e))
 或
 
 `python3 main.py "www.abc.com"`
+
+#### Excel文件内多个同名Sheet合并工具
+
+源码位于megerExcel内。
+
+`python3 main.py -i filename.xlsx filename2.xlsx -o hb.xlsx`
+
+`-i 为待合并文件文件名，支持多文件`
+`-o 合并后文件名`
 
 ## 更新日志
 
