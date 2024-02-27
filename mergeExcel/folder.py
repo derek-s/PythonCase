@@ -46,7 +46,7 @@ if __name__ == "__main__":
     fileNameList = []
     outputFileName = "hb.xlsx"
 
-    
+
     for filename in glob.glob(r'*.xlsx'):
         fileNameList.append(filename)
 
