@@ -82,7 +82,21 @@ python3 bcc2srt/main.py
 
 即可在目录下生成test.srt字幕文件。
 
+
+## 动态添加IP到黑名单
+
+检测CPU使用率，当使用率太高时读取Nginx access.log，根据特征匹配筛选IP，达到指定数量后发送到Redis数据库内。
+
+需要配合lua-nginx-module、lua-resty-redis、ngx_devel_kit等模块使用。
+
+正在测试中。
+
+
 ## 更新日志
+
+#### 2024-02-28
+
+1. 添加新的工具（测试阶段）
 
 #### 2018-11-29
 
