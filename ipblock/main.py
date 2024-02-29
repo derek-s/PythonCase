@@ -28,7 +28,7 @@ def get_ip_count(logFile, countDict, timestamp, redisClient):
             if("/tag/" in visitURL or "/wp-login.php" in visitURL or "/xmlrpc.php" in visitURL or "?replytocom=" in visitURL):
                 # print(str(visitIP) + ":" + visitURL)
                 # 判断时间 有数秒的延迟
-                if(int(visitTime) >= timestamp - 10 or int(visitTime) <= timestamp + 10):
+                if(int(visitTime) >= timestamp - 5 or int(visitTime) <= timestamp + 5):
                     if(str(visitIP) in countDict):
                         # 计数
                         countDict[str(visitIP)] += 1
@@ -38,10 +38,11 @@ def get_ip_count(logFile, countDict, timestamp, redisClient):
     print(countDict)
 
     for eachIP in countDict:
-        if (countDict[eachIP] > 20):
-            with open("testPython.log", "a+") as f:
-                f.write(time.strftime("%Y-%m-%d %H:%M:%S") + " - " + eachIP + " black\n")
-            redisClient.set("bk:"+eachIP, "black")
+        if (countDict[eachIP] > 30):
+            if(redisClient.get("bk:"+eachIP) != None):
+                with open("ipblocklist.log", "a+") as f:
+                    f.write(time.strftime("%Y-%m-%d %H:%M:%S") + " - " + eachIP + " black\n")
+                redisClient.set("bk:"+eachIP, "black")
 
 
 
@@ -54,13 +55,13 @@ if __name__ == "__main__":
     d = {}
 
     while True:
-        cpuRate = psutil.cpu_percent()
+        cpuRate = psutil.cpu_percent(interval=0.1)
         if(cpuRate > 90):
             highTime = int(time.mktime(time.localtime()))
-            print(time.strftime("%Y-%m-%d %H:%M:%S") + "cpu:" + str(cpuRate) + "%")
-            get_ip_count("/home/wwwlogs/access.log", d, highTime, r)
+            print(time.strftime("%Y-%m-%d %H:%M:%S") + " cpu:" + str(cpuRate) + "%")
+            get_ip_count("/home/wwwlogs/www.dadclab.com.log", d, highTime, r)
         else:
             d = {}
             historyRecord.clear()
-        time.sleep(1)
+        #time.sleep(0.1)
 
